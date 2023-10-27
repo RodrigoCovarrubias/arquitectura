@@ -1,0 +1,14 @@
+server:
+  port: 8080
+spring:
+  datasource:
+    url: jdbc:sqlserver://server-arquitectura.database.windows.net:1433;databaseName=arquitectura
+    username: estacionamiento
+    password: Est.1234
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.SQLServerDialect
+        ddl-auto: update
+  application:
+    name: GATEWAY
