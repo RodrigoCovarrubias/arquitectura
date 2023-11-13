@@ -30,7 +30,7 @@ public class JpaUserDetailsService implements UserDetailsService {
         Optional<Persona> o = personaRepository.findByEmail(username);
 
         if (!o.isPresent()) {
-            throw new UsernameNotFoundException("Username inexistetne");
+            throw new UsernameNotFoundException("Usuario inexistetne");
         }
 
         Persona persona = o.orElseThrow();
