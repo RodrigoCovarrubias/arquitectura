@@ -1,11 +1,18 @@
 {
+<<<<<<< HEAD
     "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx4G -Xms100m -Xlog:disable",
     "java.compile.nullAnalysis.mode": "automatic",
+=======
+>>>>>>> cec96aae17e228f29fc5e349a06ab54a96dcfe6d
     "sqltools.connections": [
         {
             "previewLimit": 50,
             "driver": "SQLite",
+<<<<<<< HEAD
             "name": "arqui",
+=======
+            "name": "arquitectura",
+>>>>>>> cec96aae17e228f29fc5e349a06ab54a96dcfe6d
             "database": "${workspaceFolder:arquitectura}/base-de-datos/arquitectura.db"
         }
     ]
