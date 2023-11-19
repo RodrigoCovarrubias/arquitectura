@@ -1,0 +1,10 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "arquitectura",
+            "database": "${workspaceFolder:arquitectura}/base-de-datos/arquitectura.db"
+        }
+    ]
+}
