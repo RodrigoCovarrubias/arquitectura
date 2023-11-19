@@ -163,7 +163,7 @@ app.post("/liberar-plaza/:idPlaza", (req, res) => {
   );
 });
 
-const puerto = 3000;
+const puerto = 8091;
 app.listen(puerto, () => {
   console.log(`El servidor está corriendo en http://localhost:${puerto}`);
 });

@@ -8,15 +8,19 @@ import org.springframework.web.client.RestTemplate;
 public class MicroServices {
 
     @Autowired
-    private  RestTemplate restTemplate;
+    private RestTemplate restTemplate;
+    private static final String url = "http://localhost:8091";
 
-    public String ServiceName(String url){
-        return restTemplate.getForObject(url,String.class);
+    public String estacionamientos() {
+        return restTemplate.getForObject(url + "/estacionamientos", String.class);
     }
 
+    public String obtenerTotalPlazas() {
+        return restTemplate.getForObject(url + "/contar-plazas", String.class);
+    }
 
-
-
-
+    public String misEstacionamientos() {
+        return restTemplate.getForObject(url + "/mis-estacionamientos", String.class);
+    }
 
 }

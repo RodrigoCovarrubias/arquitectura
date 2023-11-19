@@ -17,7 +17,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import cl.estacionamiento.authservice.model.Persona;
-import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -65,17 +64,17 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         String authorities = new ObjectMapper().writeValueAsString(tipo);
 
         String token = Jwts.builder()
-                .setSubject(username)
+                .claim("sub", username)
                 .claim("authorities", authorities)
+                .claim("iat", new Date().getTime() / 1000)
                 .signWith(TokenJwtConfig.SECRET_KEY)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 3600000))
+                .claim("exp", new Date().getTime() / 1000 + 3600)
                 .compact();
 
         response.addHeader("Authorization", TokenJwtConfig.PREFIX + token);
         Map<String, Object> body = new HashMap<>();
         body.put("token", token);
-        body.put("message", "usuario ingresado");
+        body.put("role", tipo);
         response.getWriter().write(new ObjectMapper().writeValueAsString(body));
         response.setStatus(200);
         response.setContentType("application/json");

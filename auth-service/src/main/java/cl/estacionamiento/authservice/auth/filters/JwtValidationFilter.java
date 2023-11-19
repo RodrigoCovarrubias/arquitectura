@@ -2,9 +2,7 @@ package cl.estacionamiento.authservice.auth.filters;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collection;
 
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -44,7 +42,6 @@ public class JwtValidationFilter extends BasicAuthenticationFilter {
         }
 
         String token = headers.replace("Bearer ", "");
-        System.out.println(token);
 
         try {
             ObjectMapper mapper = new ObjectMapper();
