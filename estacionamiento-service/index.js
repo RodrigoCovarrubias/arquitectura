@@ -1,9 +1,13 @@
 const express = require("express");
 const cors = require("cors");
 const sqlite3 = require("sqlite3").verbose();
+const bodyParser = require('body-parser');
+const webpay = require('./webpay/index')
 
 const app = express();
 app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 const db = new sqlite3.Database(
   "../base-de-datos/arquitectura.db",
@@ -18,10 +22,10 @@ const db = new sqlite3.Database(
   }
 );
 
-app.get("/estacionamientos", (req, res) => {
+app.post("/estacionamientos", (req, res) => {
+  const id = req.body.idPersona;
   db.all(
-    "SELECT idPlaza, direccion, tarifa, descripcion, latitud, longitud, habilitado FROM Estacionamiento e INNER JOIN Plaza p ON p.idEstacionamiento = e.idEstacionamiento;",
-    [],
+    `SELECT idPlaza, direccion, tarifa, descripcion, latitud, longitud, habilitado FROM Estacionamiento e INNER JOIN Plaza p ON p.idEstacionamiento = e.idEstacionamiento WHERE e.idPersona != ${id}`,
     (err, rows) => {
       if (err) {
         console.error("Error al ejecutar la consulta:", err);
@@ -75,19 +79,42 @@ app.get("/plaza/:idPlaza/habilitado", (req, res) => {
   );
 });
 
-app.post("/plaza/:idPlaza/arrendar/:idPersona", (req, res) => {
-  const idPlaza = req.params.idPlaza;
-  const idPersona = req.params.idPersona;
+app.post("/arrendar", (req, res) => {
+  const { idPlaza, idPersona, fechaHoraLlegada } = req.body;
+
+  if (!idPlaza || !idPersona || !fechaHoraLlegada) {
+    return res.status(400).json({ mensaje: "Se requieren idPlaza, idPersona y fechaHoraLlegada" });
+  }
+
+  // const fechaActual = new Date().toISOString().slice(0, 19).replace('T', ' '); // Obtiene la fecha y hora actual en formato 'YYYY-MM-DD HH:MM:SS'
+
+  const [fecha, hora] = fechaHoraLlegada.split('T');
+
   db.run(
-    `UPDATE Plaza SET habilitado = 0, idPersona = ${idPersona} WHERE idPlaza = ${idPlaza}`,
-    [],
+    `INSERT INTO ARRIENDO (
+      horaLLegada,
+      idPlaza,
+      idPersona,
+      fechaArriendo
+    ) VALUES (
+      ?,
+      ?,
+      ?,
+      ?
+    );`,
+    [hora.slice(0, 5), idPlaza, idPersona, fecha],
     (err) => {
       if (err) {
         console.error("Error al arrendar la plaza:", err);
-        res.status(500).send("Error interno del servidor");
-        return;
+        return res.status(500).json({ mensaje: "Error interno del servidor" });
       }
-      res.json({ mensaje: "Plaza arrendada con éxito" });
+      else{
+        res.json({ mensaje: "Plaza arrendada con éxito" });
+        db.run(
+          `UPDATE Plaza SET habilitado = 0 WHERE idPlaza = ${idPlaza}`
+        )
+      }
+      
     }
   );
 });
@@ -109,12 +136,14 @@ app.get("/arriendos", (req, res) => {
   );
 });
 
-app.get("/contar-plazas", (req, res) => {
+app.post("/contar-plazas", (req, res) => {
+  const {idPersona} = req.body;
   db.get(
     `SELECT COUNT(*) as cantidadPlazas
      FROM Plaza p
      INNER JOIN Estacionamiento e ON p.idEstacionamiento = e.idEstacionamiento
-     WHERE p.habilitado = 1`,
+     WHERE p.habilitado = 1
+     AND e.idPersona != ${idPersona}`,
     [],
     (err, row) => {
       if (err) {
@@ -127,41 +156,150 @@ app.get("/contar-plazas", (req, res) => {
   );
 });
 
-app.get("/info-estacionamientos/:idPersona", (req, res) => {
-  const idPersona = req.params.idPersona;
+app.post("/info/estacionamientos", (req, res) => {
+  const { idPersona } = req.body;
+
+  if (!idPersona) {
+    return res.status(400).json({ mensaje: "Se requiere el ID de Persona" });
+  }
+
   db.all(
-    `SELECT e.descripcion, e.direccion, e.tarifa, p.alto, p.ancho, p.largo
-     FROM Estacionamiento e
-     INNER JOIN Plaza p ON e.idEstacionamiento = p.idEstacionamiento
-     INNER JOIN Persona per ON per.idPersona = p.idPersona
-     WHERE per.idPersona = ${idPersona}`,
-    [],
+    `SELECT e.descripcion, e.direccion, e.tarifa, p.alto, p.ancho, p.largo, a.horaLlegada, a.idArriendo, p.idPlaza
+    FROM Estacionamiento e
+    INNER JOIN Plaza p ON e.idEstacionamiento = p.idEstacionamiento
+    INNER JOIN Arriendo a ON p.idPlaza = a.idPlaza
+    WHERE a.idPersona = ${idPersona}
+    AND a.horaSalida IS NULL`,
     (err, rows) => {
       if (err) {
         console.error("Error al obtener la información del estacionamiento:", err);
-        res.status(500).send("Error interno del servidor");
-        return;
+        return res.status(500).json({ mensaje: "Error interno del servidor" });
       }
       res.json({ infoEstacionamiento: rows });
     }
   );
 });
 
-app.post("/liberar-plaza/:idPlaza", (req, res) => {
-  const idPlaza = req.params.idPlaza;
+app.post("/liberar/plaza", async (req, res) => {
+  const idPlaza = req.body.idPlaza;
   db.run(
-    `UPDATE Plaza SET habilitado = 1, idPersona = null WHERE idPlaza = ${idPlaza}`,
+    `UPDATE Plaza SET habilitado = 1 WHERE idPlaza = ${idPlaza}`,
     [],
-    (err) => {
+    async (err) => {
       if (err) {
         console.error("Error al liberar la plaza:", err);
         res.status(500).send("Error interno del servidor");
         return;
       }
-      res.json({ mensaje: "Plaza liberada con éxito" });
     }
   );
 });
+
+app.post("/persona/info", (req, res) => {
+  const { email } = req.body;
+
+  db.get(`SELECT idPersona, nombre, rut, paterno, email, fechaNacimiento FROM Persona WHERE email = '${email}'`, [], (err, row) => {
+    if (err) {
+      console.error("Error al ejecutar la consulta:", err);
+      res.status(500).send("Error interno del servidor");
+      return;
+    }
+    res.json({ datosPersonales: row });
+  });
+});
+
+app.post("/finalizar/arriendo", (req, res) => {
+  const { idArriendo, horaSalida } = req.body;
+
+  // Utilizando placeholders para evitar SQL Injection
+  db.run("UPDATE Arriendo SET horaSalida = ? WHERE idArriendo = ?", [horaSalida, idArriendo], function (err) {
+    if (err) {
+      console.error("Error al ejecutar la consulta:", err);
+      res.status(500).send("Error interno del servidor");
+      return res;
+    }
+    res.json({ mensaje: "Finalizado con exito" });
+  });
+});
+
+app.post("/arriendo/pagar", async (req, res) => {
+  const idPlaza = req.body.idPlaza;
+  const monto = req.body.monto;
+  const idArriendo = req.body.idArriendo;
+  const horaSalida = req.body.horaSalida;
+
+  const urlRetorno = `${req.protocol}://${req.get("host")}/webpay/confirmar`;
+
+  const webpayData = await webpay.crearTransaccionWebpay(urlRetorno, monto)
+
+  db.run("INSERT INTO transacciones_pago VALUES(?,?,?,?,?,?)", [webpayData.token, webpayData.buyOrder, idPlaza, idArriendo, horaSalida, monto], function (err) {
+    if (err) {
+      console.error("Error al ejecutar la consulta:", err);
+      res.status(500).send("Error interno del servidor");
+      return res;
+    }
+    res.json({ 
+      urlWebpay: webpayData.urlWebpay,
+      tokenWebpay: webpayData.token
+    });
+  });
+})
+
+app.get("/webpay/confirmar", async (req, res) => {
+  const token = req.query.token_ws;
+  const tbkToken = req.query.TBK_TOKEN;
+  const tbkOrdenCompra = req.query.TBK_ORDEN_COMPRA;
+  const tbkIdSesion = req.query.TBK_ID_SESION;
+
+  if (token && !tbkToken) {
+    db.get(`SELECT * FROM transacciones_pago WHERE token = ?`, [token], async (err, transaccion) => {
+      if (err) {
+        console.error("Error al ejecutar la consulta:", err);
+        res.status(500).send("Error interno del servidor");
+        return;
+      }
+      const respuestaConfirmacion = await webpay.confirmarTransaccion(token)
+  
+      const urlExito = `http://localhost:3000/pago/exito?monto=${respuestaConfirmacion.amount}&fechaTransaccion=${respuestaConfirmacion.transaction_date}&codigoAutorizacion=${respuestaConfirmacion.authorization_code}`
+    
+      db.run("UPDATE Arriendo SET horaSalida = ? WHERE idArriendo = ?", [transaccion.horaSalida, transaccion.idArriendo], function (err) {
+        if (err) {
+          console.error("Error al ejecutar la consulta:", err);
+          res.status(500).send("Error interno del servidor");
+          return res;
+        }
+        
+        db.run(
+          `UPDATE Plaza SET habilitado = 1 WHERE idPlaza = ?`,
+          [transaccion.idPlaza],
+          async (err) => {
+            if (err) {
+              console.error("Error al liberar la plaza:", err);
+              res.status(500).send("Error interno del servidor");
+              return;
+            }
+            res.redirect(urlExito)
+          }
+        )
+  
+      });
+    });  
+  } else {
+    let motivo = ""
+    if (!tbkToken) {
+      motivo = "El pago fue anulado por tiempo de espera.";
+    }
+    else if (tbkToken && tbkOrdenCompra && tbkIdSesion) {
+      motivo = "El pago fue anulado por el usuario.";
+    }
+    else {
+      motivo = "El pago es inválido.";
+    }
+  
+    const urlFallido = `http://localhost:3000/pago/fallido?motivo=${motivo}&ordenCompra=${tbkOrdenCompra}`
+    res.redirect(urlFallido)
+  }
+})
 
 const puerto = 8091;
 app.listen(puerto, () => {

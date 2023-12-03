@@ -66,9 +66,9 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         String token = Jwts.builder()
                 .claim("sub", username)
                 .claim("authorities", authorities)
-                .claim("iat", new Date().getTime() / 1000)
+                .claim("iat", new Date().getTime())
                 .signWith(TokenJwtConfig.SECRET_KEY)
-                .claim("exp", new Date().getTime() / 1000 + 3600)
+                .claim("exp", new Date().getTime() +43200000)
                 .compact();
 
         response.addHeader("Authorization", TokenJwtConfig.PREFIX + token);

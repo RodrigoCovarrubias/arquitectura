@@ -10,4 +10,6 @@ public interface PersonaRepository extends CrudRepository<Persona, Long> {
 
     Optional<Persona> findByEmail(String email);
 
+    Optional<Long>findIdByEmail(String email);
+
 }

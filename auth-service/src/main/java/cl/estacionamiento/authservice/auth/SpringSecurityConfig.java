@@ -21,7 +21,7 @@ import org.springframework.web.filter.CorsFilter;
 
 import cl.estacionamiento.authservice.auth.filters.JwtAuthenticationFilter;
 import cl.estacionamiento.authservice.auth.filters.JwtValidationFilter;
-import jakarta.servlet.FilterRegistration;
+
 
 @Configuration
 public class SpringSecurityConfig {
